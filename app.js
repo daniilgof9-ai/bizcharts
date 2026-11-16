@@ -4,12 +4,19 @@ if (tg) {
     tg.setHeaderColor('#0d1117'); tg.setBackgroundColor('#0d1117');
 }
 
-let userData = { name: "Пользователь", username: "@username" };
+// --- ПОЛЬЗОВАТЕЛЬ ---
+let userData = { name: "Пользователь", username: "@username", isPremium: false };
+// Для теста Премиума раскомментируй строчку ниже:
+// userData.isPremium = true;
+
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
     userData.name = u.first_name || "Пользователь";
     userData.username = u.username ? `@${u.username}` : "@username";
 }
+const avatarLetter = userData.name.charAt(0).toUpperCase();
+document.getElementById('main-avatar').innerText = avatarLetter;
+document.getElementById('profile-avatar').innerText = avatarLetter;
 
 function triggerHaptic(type = 'light') {
     if (tg && tg.HapticFeedback) {
@@ -35,13 +42,35 @@ function showToast(message, type = 'default') {
 let currentChart = null;
 let currentData = null; 
 let history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
+let trash = JSON.parse(localStorage.getItem('bizcharts_trash')) || [];
+let deletedAt = Number(localStorage.getItem('bizcharts_deletedAt')) || 0;
 let chartTypes = ['doughnut', 'bar', 'line', 'comparison'];
 let currentChartIndex = 0;
+
+// Если Премиум, показываем кнопку Корзины
+if (userData.isPremium) {
+    document.getElementById('trash-btn').style.display = 'block';
+    document.getElementById('profile-tariff').innerText = "Премиум";
+    document.getElementById('limit-desc').innerText = "Неограниченное количество отчетов.";
+}
+
+// --- ПРОВЕРКА ЛИМИТОВ ---
+function canCreateReport() {
+    if (userData.isPremium) return true; // В премиуме безлимит
+    
+    if (history.length >= 1) return false; 
+    if (deletedAt > 0) {
+        const diffDays = (Date.now() - deletedAt) / (1000 * 60 * 60 * 24);
+        if (diffDays < 7) return false;
+    }
+    return true;
+}
 
 function switchTab(tabId, btnElement = null) {
     triggerHaptic('light');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(`screen-${tabId}`).classList.add('active');
+    const target = document.getElementById(`screen-${tabId}`);
+    if (target) target.classList.add('active');
 
     if (btnElement) {
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -54,24 +83,33 @@ function switchTab(tabId, btnElement = null) {
     }
 
     if (tabId === 'home' || tabId === 'history') renderHistory();
+    if (tabId === 'trash') renderTrash();
     if (tabId === 'profile') updateProfile();
 }
 
-function updateHint(inputId, hintId) {
-    const val = Number(document.getElementById(inputId).value) || 0;
-    const income = Number(document.getElementById('income').value) || 0;
-    const hintEl = document.getElementById(hintId);
-    
-    if (hintEl && inputId !== 'income' && income > 0 && val > 0) {
-        const percent = ((val / income) * 100).toFixed(1);
-        hintEl.innerText = `Это ${percent}% от вашего дохода`;
-        hintEl.classList.add('show');
-    } else if (hintEl) {
-        hintEl.classList.remove('show');
+// --- ПЕРЕИМЕНОВАНИЕ ---
+function promptRename() {
+    if (!currentData) return;
+    let newName = prompt("Введите название для отчета:", currentData.name || "Анализ");
+    if (newName && newName.trim() !== "") {
+        currentData.name = newName.trim();
+        const index = history.findIndex(item => item.id === currentData.id);
+        if (index !== -1) {
+            history[index] = currentData;
+            localStorage.setItem('bizcharts_history', JSON.stringify(history));
+        }
+        document.getElementById('result-title').innerText = currentData.name;
+        showToast("Название обновлено", "success");
     }
 }
 
 function generateReport() {
+    if (!canCreateReport()) {
+        document.getElementById('limit-modal').classList.remove('hidden');
+        triggerHaptic('error');
+        return;
+    }
+
     triggerHaptic('medium');
     const income = Number(document.getElementById('income').value) || 0;
     const purchase = Number(document.getElementById('purchase').value) || 0;
@@ -81,7 +119,6 @@ function generateReport() {
 
     if (income === 0 && purchase === 0 && ads === 0 && salary === 0 && other === 0) {
         showToast("Введите хотя бы одну цифру", "error");
-        triggerHaptic('error');
         return;
     }
 
@@ -90,12 +127,18 @@ function generateReport() {
 
     currentData = {
         id: Date.now(), date: new Date().toLocaleDateString('ru-RU'),
-        income, purchase, ads, salary, other, totalExpenses, profit
+        name: "Отчет от " + new Date().toLocaleDateString('ru-RU'),
+        income, purchase, ads, salary, other, totalExpenses, profit,
+        isSaved: false
     };
 
+    if (!history.find(item => item.id === currentData.id)) {
+        history.unshift(currentData);
+        localStorage.setItem('bizcharts_history', JSON.stringify(history));
+    }
+
     switchTab('result');
-    
-    // Мгновенное обновление
+    document.getElementById('result-title').innerText = currentData.name;
     document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
     document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
@@ -105,6 +148,7 @@ function generateReport() {
     else advice = "Отличные показатели! Продолжайте в том же духе.";
     document.getElementById('res-advice').innerText = advice;
 
+    document.getElementById('save-btn').innerText = "💾 Сохранить в избранное";
     drawChart(chartTypes[currentChartIndex]);
 }
 
@@ -136,14 +180,13 @@ function drawChart(type) {
         if (sortedHistory.length < 2) {
             labels = ['Нет данных', 'Мало данных'];
             datasets = [{
-                label: 'Сохраните 2 отчета', data: [0, 0],
+                label: 'Нужно 2 отчета', data: [0, 0],
                 borderColor: '#30363d', borderWidth: 3, borderDash: [5, 5], tension: 0.4, fill: false, pointBackgroundColor: '#8b949e'
             }];
-            showToast("Сохраните 2 отчета, чтобы увидеть динамику", "default");
         } else {
             labels = sortedHistory.map(item => item.date.slice(0, 5)); 
             datasets = [{
-                label: 'Динамика прибыли', data: sortedHistory.map(item => item.profit),
+                label: 'Динамика', data: sortedHistory.map(item => item.profit),
                 borderColor: '#ff8c00', backgroundColor: 'rgba(255, 140, 0, 0.1)',
                 borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff'
             }];
@@ -174,47 +217,82 @@ function changeChartType(type, btn) {
     drawChart(type);
 }
 
-let touchStartX = 0;
-const swipeZone = document.getElementById('swipe-zone');
-if (swipeZone) {
-    swipeZone.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, {passive: true});
-    swipeZone.addEventListener('touchend', e => {
-        let touchEndX = e.changedTouches[0].screenX;
-        if (touchEndX < touchStartX - 50) {
-            currentChartIndex = (currentChartIndex + 1) % chartTypes.length;
-            updateChartBySwipe();
-        }
-        if (touchEndX > touchStartX + 50) {
-            currentChartIndex = (currentChartIndex - 1 + chartTypes.length) % chartTypes.length;
-            updateChartBySwipe();
-        }
-    }, {passive: true});
-}
-
-function updateChartBySwipe() {
-    triggerHaptic('light');
-    document.querySelectorAll('.chart-tab').forEach((b, i) => {
-        if (i === currentChartIndex) b.classList.add('active');
-        else b.classList.remove('active');
-    });
-    drawChart(chartTypes[currentChartIndex]);
-}
-
 function saveToHistory() {
     triggerHaptic('medium');
     if (!currentData) return;
-    if (history.length >= 3) {
-        document.getElementById('limit-modal').classList.remove('hidden');
-        triggerHaptic('error');
-        return;
-    }
-    if (!history.find(item => item.id === currentData.id)) {
-        history.unshift(currentData);
+    
+    currentData.isSaved = true;
+    const index = history.findIndex(item => item.id === currentData.id);
+    if (index !== -1) {
+        history[index] = currentData;
         localStorage.setItem('bizcharts_history', JSON.stringify(history));
-        showToast("Отчет сохранен", "success");
+        showToast("Добавлено в избранное", "success");
         triggerHaptic('success');
+        document.getElementById('save-btn').innerText = "⭐ В избранном";
     }
-    switchTab('home');
+}
+
+// --- УДАЛЕНИЕ ---
+let itemToDeleteId = null;
+
+function handleDelete(id, event) {
+    event.stopPropagation();
+    
+    if (userData.isPremium) {
+        // В Премиум просто кидаем в корзину
+        const itemIndex = history.findIndex(item => item.id === id);
+        if (itemIndex !== -1) {
+            const item = history.splice(itemIndex, 1)[0];
+            trash.push(item);
+            localStorage.setItem('bizcharts_history', JSON.stringify(history));
+            localStorage.setItem('bizcharts_trash', JSON.stringify(trash));
+            showToast("Перемещено в корзину", "default");
+            renderHistory();
+        }
+    } else {
+        // В Базовом показываем страшное окно
+        itemToDeleteId = id;
+        document.getElementById('delete-warning-modal').classList.remove('hidden');
+    }
+}
+
+function confirmDeleteBasic() {
+    if (itemToDeleteId) {
+        history = history.filter(item => item.id !== itemToDeleteId);
+        localStorage.setItem('bizcharts_history', JSON.stringify(history));
+        
+        // Штраф 7 дней
+        deletedAt = Date.now();
+        localStorage.setItem('bizcharts_deletedAt', deletedAt);
+        
+        itemToDeleteId = null;
+        closeModal('delete-warning-modal');
+        showToast("Отчет удален навсегда", "error");
+        triggerHaptic('error');
+        renderHistory();
+    }
+}
+
+// --- КОРЗИНА (Только Премиум) ---
+function restoreFromTrash(id, event) {
+    event.stopPropagation();
+    const itemIndex = trash.findIndex(item => item.id === id);
+    if (itemIndex !== -1) {
+        const item = trash.splice(itemIndex, 1)[0];
+        history.push(item);
+        localStorage.setItem('bizcharts_history', JSON.stringify(history));
+        localStorage.setItem('bizcharts_trash', JSON.stringify(trash));
+        showToast("Восстановлено", "success");
+        renderTrash();
+    }
+}
+
+function deleteForever(id, event) {
+    event.stopPropagation();
+    trash = trash.filter(item => item.id !== id);
+    localStorage.setItem('bizcharts_trash', JSON.stringify(trash));
+    showToast("Удалено навсегда", "error");
+    renderTrash();
 }
 
 function renderHistory() {
@@ -223,46 +301,47 @@ function renderHistory() {
     const timerEl = document.getElementById('update-timer');
     
     if(document.getElementById('history-count')) document.getElementById('history-count').innerText = history.length;
+    if(document.getElementById('trash-count')) document.getElementById('trash-count').innerText = trash.length;
     if(homeList) homeList.innerHTML = ''; 
     if(fullList) fullList.innerHTML = '';
 
-    if (history.length > 0 && timerEl) {
-        const latestReport = history.reduce((prev, current) => (prev.id > current.id) ? prev : current);
-        const lastDate = new Date(latestReport.id);
-        const nextUpdateDate = new Date(lastDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-        const today = new Date();
-        const diffTime = nextUpdateDate - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 0) {
-            let dayWord = "дней";
-            if (diffDays % 10 === 1 && diffDays % 100 !== 11) dayWord = "день";
-            else if ([2, 3, 4].includes(diffDays % 10) && ![12, 13, 14].includes(diffDays % 100)) dayWord = "дня";
-            timerEl.innerText = `Обновить через ${diffDays} ${dayWord}`;
-            timerEl.style.color = "#8b949e"; 
+    // Таймер
+    if (timerEl) {
+        if (!userData.isPremium && history.length > 0) {
+            timerEl.innerText = `Лимит: 1 отчет`;
+            timerEl.style.color = "#8b949e";
+            timerEl.style.display = "block";
+        } else if (!userData.isPremium && deletedAt > 0) {
+            const diffDays = 7 - Math.floor((Date.now() - deletedAt) / (1000 * 60 * 60 * 24));
+            if (diffDays > 0) {
+                timerEl.innerText = `Новый через ${diffDays} дн.`;
+                timerEl.style.color = "#E63946";
+            } else {
+                timerEl.innerText = `Можно создать!`;
+                timerEl.style.color = "#2EC4B6";
+            }
+            timerEl.style.display = "block";
         } else {
-            timerEl.innerText = `Пора обновить данные!`;
-            timerEl.style.color = "#E63946"; 
+            timerEl.style.display = "none";
         }
-        timerEl.style.display = "block";
-    } else if (timerEl) {
-        timerEl.style.display = "none";
     }
 
     if (history.length === 0) {
-        if(homeList) homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет сохраненных отчетов</div>';
+        if(homeList) homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет отчетов</div>';
         if(fullList) fullList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">История пуста</div>';
         return;
     }
 
     history.forEach((item, index) => {
+        const isSavedIcon = item.isSaved ? '⭐ ' : '';
         const card = `
-            <div class="history-card" onclick="loadFromHistory(${index})">
-                <div class="history-info">
-                    <h4>Отчет от ${item.date}</h4>
+            <div class="history-card" onclick="loadFromHistory(${index})" style="position: relative;">
+                <div class="history-info" style="max-width: 65%;">
+                    <h4>${isSavedIcon}${item.name}</h4>
                     <p>Доход: ${item.income.toLocaleString('ru-RU')} ₽</p>
                 </div>
                 <div class="history-amount">${item.profit > 0 ? '+' : ''}${item.profit.toLocaleString('ru-RU')} ₽</div>
+                <button onclick="handleDelete(${item.id}, event)" style="background:none; border:none; color:#E63946; font-size: 18px; cursor:pointer; margin-left: 5px;">🗑️</button>
             </div>
         `;
         if (index < 3 && homeList) homeList.innerHTML += card;
@@ -277,6 +356,41 @@ function renderHistory() {
     if(document.getElementById('stat-avg')) document.getElementById('stat-avg').innerText = `${avg.toLocaleString('ru-RU')} ₽`;
 }
 
+function renderTrash() {
+    const trashList = document.getElementById('trash-list');
+    if (!trashList) return;
+    trashList.innerHTML = '';
+
+    // Очистка старых (старше 30 дней)
+    const now = Date.now();
+    trash = trash.filter(item => {
+        const daysInTrash = (now - item.id) / (1000 * 60 * 60 * 24);
+        return daysInTrash <= 30;
+    });
+    localStorage.setItem('bizcharts_trash', JSON.stringify(trash));
+
+    if (trash.length === 0) {
+        trashList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Корзина пуста</div>';
+        return;
+    }
+
+    trash.forEach((item) => {
+        const card = `
+            <div class="history-card" style="position: relative; opacity: 0.8;">
+                <div class="history-info" style="max-width: 60%;">
+                    <h4>${item.name}</h4>
+                    <p>${item.date}</p>
+                </div>
+                <div style="display:flex; gap: 5px;">
+                    <button onclick="restoreFromTrash(${item.id}, event)" style="background:none; border:none; color:#2EC4B6; font-size: 18px; cursor:pointer;">♻️</button>
+                    <button onclick="deleteForever(${item.id}, event)" style="background:none; border:none; color:#E63946; font-size: 18px; cursor:pointer;">❌</button>
+                </div>
+            </div>
+        `;
+        trashList.innerHTML += card;
+    });
+}
+
 function loadFromHistory(index) {
     triggerHaptic('light');
     currentData = history[index];
@@ -287,23 +401,22 @@ function loadFromHistory(index) {
     document.getElementById('other').value = currentData.other;
 
     switchTab('result');
+    document.getElementById('result-title').innerText = currentData.name;
     document.getElementById('res-profit').innerText = `${currentData.profit.toLocaleString('ru-RU')} ₽`;
     document.getElementById('res-expenses').innerText = `${currentData.totalExpenses.toLocaleString('ru-RU')} ₽`;
+    document.getElementById('save-btn').innerText = currentData.isSaved ? "⭐ В избранном" : "💾 Сохранить в избранное";
+    
     drawChart(chartTypes[currentChartIndex]);
 }
 
 function updateProfile() {
-    const nameEl = document.getElementById('profile-name');
-    const usernameEl = document.getElementById('profile-username');
+    if (document.getElementById('profile-name')) document.getElementById('profile-name').innerText = userData.name;
+    if (document.getElementById('profile-username')) document.getElementById('profile-username').innerText = userData.username;
     
-    if (nameEl) nameEl.innerText = userData.name;
-    if (usernameEl) usernameEl.innerText = userData.username;
+    let used = history.length > 0 ? 1 : 0;
+    if(document.getElementById('limit-text')) document.getElementById('limit-text').innerText = `${used} / 1`;
     
-    let limit = 3;
-    let used = history.length > limit ? limit : history.length;
-    if(document.getElementById('limit-text')) document.getElementById('limit-text').innerText = `${used} / ${limit}`;
-    
-    let percent = (used / limit) * 100;
+    let percent = used * 100;
     const progressBar = document.getElementById('limit-progress');
     if (progressBar) {
         progressBar.style.width = `${percent}%`;
@@ -321,9 +434,9 @@ function buyPremium() {
     }
 }
 
-function closeModal() {
+function closeModal(modalId) {
     triggerHaptic('light');
-    document.getElementById('limit-modal').classList.add('hidden');
+    document.getElementById(modalId).classList.add('hidden');
 }
 
 // --- ФОН С ЧАСТИЦАМИ ---
@@ -349,24 +462,4 @@ if (canvas) {
             this.alpha = Math.max(0.05, Math.min(0.6, this.alpha));
         }
         draw() {
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 140, 0, ${this.alpha})`;
-            ctx.shadowBlur = 10; ctx.shadowColor = '#ff8c00';
-            ctx.fill(); ctx.shadowBlur = 0;
-        }
-    }
-    for (let i = 0; i < 40; i++) particles.push(new Particle());
-    function animateParticles() {
-        ctx.clearRect(0, 0, width, height);
-        particles.forEach(p => { p.update(); p.draw(); });
-        requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
-}
-
-window.addEventListener('load', () => {
-    renderHistory();
-    if(document.getElementById('screen-profile').classList.contains('active')) {
-        updateProfile();
-    }
-});
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0

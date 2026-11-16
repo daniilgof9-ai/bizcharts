@@ -16,7 +16,7 @@
     <div class="screen active" id="screen-home">
         <div class="header">
             <h1>Главная</h1>
-            <div class="avatar" onclick="switchTab('profile')">A</div>
+            <div class="avatar" id="main-avatar" onclick="switchTab('profile')">A</div>
         </div>
         
         <div class="hero-card">
@@ -24,7 +24,7 @@
             <p>Готовы проанализировать свои финансы?</p>
             <div class="hero-actions">
                 <button class="btn-primary ripple" onclick="switchTab('form')">
-                    <span class="btn-icon-left">+</span> Создать отчет
+                    <span class="btn-icon-left">+</span> Создать
                 </button>
                 <button class="btn-secondary ripple" onclick="switchTab('history')">
                     📂 Все
@@ -58,7 +58,7 @@
         </div>
         <div class="form-container">
             <div class="input-group">
-                <label>💰 Доход за месяц <span class="req">*</span></label>
+                <label>💰 Доход (выручка) <span class="req">*</span></label>
                 <div class="input-wrapper">
                     <input type="number" id="income" placeholder="0" oninput="updateHint('income', 'hint-income')">
                     <span class="currency">₽</span>
@@ -82,7 +82,7 @@
                 <div class="hint" id="hint-ads"></div>
             </div>
             <div class="input-group">
-                <label>👨‍💻 Зарплаты</label>
+                <label>👨‍💻 Зарплата сотрудников</label>
                 <div class="input-wrapper">
                     <input type="number" id="salary" placeholder="0" oninput="updateHint('salary', 'hint-salary')">
                     <span class="currency">₽</span>
@@ -102,11 +102,10 @@
     <!-- ================= ЭКРАН: РЕЗУЛЬТАТ ================= -->
     <div class="screen" id="screen-result">
         <div class="header">
-            <h1>Анализ</h1>
-            <button class="btn-icon ripple" onclick="switchTab('home')">✕</button>
+            <h1 id="result-title" style="font-size: 20px;">Анализ</h1>
+            <button class="btn-icon ripple" onclick="promptRename()" title="Переименовать">✏️</button>
         </div>
         
-        <!-- НОВЫЙ ДИЗАЙН: Объединенный блок -->
         <div class="result-dashboard">
             <div class="res-metrics">
                 <div class="res-box">
@@ -125,7 +124,6 @@
             </div>
         </div>
         
-        <!-- Кнопки графиков -->
         <div class="chart-tabs">
             <button class="chart-tab active" onclick="changeChartType('doughnut', this)">Круг</button>
             <button class="chart-tab" onclick="changeChartType('bar', this)">Столбцы</button>
@@ -137,8 +135,8 @@
             <canvas id="mainChart"></canvas>
         </div>
         
-        <button class="btn-primary full-width mt-20 ripple" onclick="saveToHistory()">
-            💾 Сохранить в историю
+        <button class="btn-primary full-width mt-20 ripple" id="save-btn" onclick="saveToHistory()">
+            💾 Сохранить в избранное
         </button>
     </div>
 
@@ -148,7 +146,23 @@
             <h1>Мои расчеты</h1>
             <span class="badge" id="history-count">0</span>
         </div>
+        
+        <!-- Кнопка Корзины (Показывается только в Премиум, но мы скроем её через CSS/JS) -->
+        <button id="trash-btn" class="btn-secondary full-width ripple" style="margin-bottom: 15px; border-color: #E63946; color: #E63946; display: none;" onclick="switchTab('trash')">
+            🗑️ Корзина (<span id="trash-count">0</span>)
+        </button>
+        
         <div id="full-history" class="history-list"></div>
+    </div>
+
+    <!-- ================= ЭКРАН: КОРЗИНА (Только Премиум) ================= -->
+    <div class="screen" id="screen-trash">
+        <div class="header">
+            <h1>Корзина</h1>
+            <button class="btn-icon ripple" onclick="switchTab('history')">✕</button>
+        </div>
+        <p style="color: #8b949e; font-size: 12px; margin-bottom: 15px;">Отчеты хранятся 30 дней.</p>
+        <div id="trash-list" class="history-list"></div>
     </div>
 
     <!-- ================= ЭКРАН: ПРОФИЛЬ ================= -->
@@ -157,7 +171,7 @@
             <h1>Профиль</h1>
         </div>
         <div class="profile-card">
-            <div class="avatar big">A</div>
+            <div class="avatar big" id="profile-avatar">A</div>
             <h2 id="profile-name">Пользователь</h2>
             <p class="username" id="profile-username" style="color: #8b949e; font-size: 13px; margin-bottom: 5px;">@username</p>
             <p class="status">Тариф: <span class="highlight-orange" id="profile-tariff">Базовый</span></p>
@@ -166,11 +180,12 @@
         <div class="limits-box">
             <div class="limit-info">
                 <span>Лимит отчетов</span>
-                <span id="limit-text">0 / 3</span>
+                <span id="limit-text">0 / 1</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" id="limit-progress" style="width: 0%"></div>
             </div>
+            <p style="font-size: 11px; color: #8b949e; margin-top: 8px;" id="limit-desc">Бесплатный тариф: 1 слот. Удаление = ожидание 7 дней.</p>
         </div>
         
         <div class="premium-box">
@@ -199,13 +214,25 @@
         </button>
     </div>
 
+    <!-- Модалка "Лимит исчерпан" -->
     <div class="modal-overlay hidden" id="limit-modal">
         <div class="modal-content">
-            <div class="modal-icon">🔒</div>
-            <h3>Лимит достигнут</h3>
-            <p>В бесплатной версии можно сохранить только 3 отчета. Перейдите на Премиум, чтобы снять ограничения.</p>
+            <div class="modal-icon">⏳</div>
+            <h3>Подождите!</h3>
+            <p>Вы удалили отчет. В бесплатной версии новый можно создать только через 7 дней. Купите Премиум, чтобы снять ограничение.</p>
             <button class="btn-primary full-width" onclick="buyPremium()">Купить Премиум</button>
-            <button class="btn-secondary full-width mt-10" onclick="closeModal()">Позже</button>
+            <button class="btn-secondary full-width mt-10" onclick="closeModal('limit-modal')">Позже</button>
+        </div>
+    </div>
+
+    <!-- Модалка "ВНИМАНИЕ УДАЛЕНИЕ" -->
+    <div class="modal-overlay hidden" id="delete-warning-modal">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h3>Удалить навсегда?</h3>
+            <p>В бесплатной версии отчет удаляется безвозвратно! Вы не сможете создать новый в течение 7 дней.</p>
+            <button class="btn-primary full-width" style="background: linear-gradient(135deg, #E63946, #c1121f);" onclick="confirmDeleteBasic()">Да, удалить навсегда</button>
+            <button class="btn-secondary full-width mt-10" onclick="closeModal('delete-warning-modal')">Отмена</button>
         </div>
     </div>
 
