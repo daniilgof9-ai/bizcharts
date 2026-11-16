@@ -5,80 +5,217 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BizCharts — Аналитика</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключаем Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="particleCanvas"></canvas>
+    
+    <!-- Контейнер для уведомлений (Toast) -->
+    <div id="toast-container" class="toast-container"></div>
 
-    <!-- ЭКРАН 1: Главный (Витрина) -->
-    <div class="container" id="mainScreen">
-        <h1>
-            Контроль финансов<br>
-            за <span class="highlight-orange" id="priceMain">49 ⭐️</span><br>
-            <span class="strike-through">вместо 500 ⭐️</span>
-        </h1>
+    <!-- ================= ЭКРАН: ГЛАВНАЯ ================= -->
+    <div class="screen active" id="screen-home">
+        <div class="header">
+            <h1>Главная</h1>
+            <div class="avatar" onclick="switchTab('profile')">A</div>
+        </div>
+        
+        <div class="hero-card">
+            <h2>С возвращением!</h2>
+            <p>Готовы проанализировать свои финансы?</p>
+            <button class="btn-primary ripple" onclick="switchTab('form')">
+                <span class="btn-icon-left">+</span> Создать отчет
+            </button>
+        </div>
 
-        <p class="subtitle">
-            Узнай, куда уходят деньги за 60 секунд.<br>
-            Наглядные диаграммы без Excel и сложных таблиц.
-        </p>
-
-        <button class="btn-primary" id="startBtn">Построить диаграмму</button>
-
-        <div class="stats-grid">
-            <div class="stat-card" onclick="triggerHaptic()">
-                <span class="stat-number" id="stat1">0</span>
-                <span class="stat-label">шаблонов</span>
+        <div class="stats-row">
+            <div class="mini-stat">
+                <span class="mini-label">Всего отчетов</span>
+                <span class="mini-value" id="stat-total">0</span>
             </div>
-            <div class="stat-card" onclick="triggerHaptic()">
-                <span class="stat-number" id="stat2">0</span>
-                <span class="stat-label">видов графиков</span>
+            <div class="mini-stat">
+                <span class="mini-label">Средняя прибыль</span>
+                <span class="mini-value green" id="stat-avg">0 ₽</span>
             </div>
-            <div class="stat-card" onclick="triggerHaptic()">
-                <span class="stat-number" id="stat3">0</span>
-                <span class="stat-label">дня пробника</span>
+        </div>
+
+        <div class="section-header">
+            <h3 class="section-title">Последние отчеты</h3>
+            <button class="btn-text" onclick="switchTab('history')">Все</button>
+        </div>
+        <div id="home-history" class="history-list"></div>
+    </div>
+
+    <!-- ================= ЭКРАН: ФОРМА ВВОДА ================= -->
+    <div class="screen" id="screen-form">
+        <div class="header">
+            <h1>Новый отчет</h1>
+            <button class="btn-icon ripple" onclick="switchTab('home')">✕</button>
+        </div>
+        
+        <div class="form-container">
+            <div class="input-group">
+                <label>💰 Доход за месяц <span class="req">*</span></label>
+                <div class="input-wrapper">
+                    <input type="number" id="income" placeholder="0" oninput="updateHint('income', 'hint-income')">
+                    <span class="currency">₽</span>
+                </div>
+                <div class="hint" id="hint-income"></div>
             </div>
+
+            <div class="input-group">
+                <label>🛒 Закупка товара</label>
+                <div class="input-wrapper">
+                    <input type="number" id="purchase" placeholder="0" oninput="updateHint('purchase', 'hint-purchase')">
+                    <span class="currency">₽</span>
+                </div>
+                <div class="hint" id="hint-purchase"></div>
+            </div>
+
+            <div class="input-group">
+                <label>📢 Реклама</label>
+                <div class="input-wrapper">
+                    <input type="number" id="ads" placeholder="0" oninput="updateHint('ads', 'hint-ads')">
+                    <span class="currency">₽</span>
+                </div>
+                <div class="hint" id="hint-ads"></div>
+            </div>
+
+            <div class="input-group">
+                <label>👨‍💻 Зарплаты</label>
+                <div class="input-wrapper">
+                    <input type="number" id="salary" placeholder="0" oninput="updateHint('salary', 'hint-salary')">
+                    <span class="currency">₽</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>📦 Прочее</label>
+                <div class="input-wrapper">
+                    <input type="number" id="other" placeholder="0" oninput="updateHint('other', 'hint-other')">
+                    <span class="currency">₽</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-primary full-width ripple mt-20" onclick="generateReport()">Показать график</button>
+    </div>
+
+    <!-- ================= ЭКРАН: РЕЗУЛЬТАТ ================= -->
+    <div class="screen" id="screen-result">
+        <div class="header">
+            <h1>Анализ</h1>
+            <button class="btn-icon ripple" onclick="switchTab('home')">✕</button>
+        </div>
+
+        <!-- Сводка (Скелетон) -->
+        <div class="summary-cards" id="summary-skeleton">
+            <div class="skeleton summary-card"></div>
+            <div class="skeleton summary-card"></div>
+        </div>
+        <div class="summary-cards hidden" id="summary-real">
+            <div class="summary-card">
+                <span class="label">Прибыль</span>
+                <span class="value" id="res-profit">0 ₽</span>
+            </div>
+            <div class="summary-card">
+                <span class="label">Расходы</span>
+                <span class="value red" id="res-expenses">0 ₽</span>
+            </div>
+        </div>
+
+        <!-- Переключатель графиков -->
+        <div class="chart-tabs">
+            <button class="chart-tab active" onclick="changeChartType('doughnut', this)">🍩</button>
+            <button class="chart-tab" onclick="changeChartType('bar', this)">📊</button>
+            <button class="chart-tab" onclick="changeChartType('horizontalBar', this)">📉</button>
+            <button class="chart-tab" onclick="changeChartType('line', this)">📈</button>
+            <button class="chart-tab" onclick="changeChartType('comparison', this)">⚖️</button>
+        </div>
+
+        <!-- Свайп-зона для графиков -->
+        <div class="chart-container swipe-zone" id="swipe-zone">
+            <div class="loader-spinner hidden" id="chart-loader"></div>
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <div class="advice-box" id="res-advice-box">
+            <span class="advice-icon">💡</span>
+            <p class="advice" id="res-advice"></p>
+        </div>
+        
+        <button class="btn-primary full-width mt-20 ripple" onclick="saveToHistory()">
+            💾 Сохранить в историю
+        </button>
+    </div>
+
+    <!-- ================= ЭКРАН: ИСТОРИЯ ================= -->
+    <div class="screen" id="screen-history">
+        <div class="header">
+            <h1>Мои расчеты</h1>
+            <span class="badge" id="history-count">0</span>
+        </div>
+        <div id="full-history" class="history-list"></div>
+    </div>
+
+    <!-- ================= ЭКРАН: ПРОФИЛЬ ================= -->
+    <div class="screen" id="screen-profile">
+        <div class="header">
+            <h1>Профиль</h1>
+        </div>
+        
+        <div class="profile-card">
+            <div class="avatar big">A</div>
+            <h2>Пользователь</h2>
+            <p class="status">Тариф: <span class="highlight-orange" id="profile-tariff">Базовый</span></p>
+        </div>
+
+        <div class="limits-box">
+            <div class="limit-info">
+                <span>Лимит отчетов</span>
+                <span id="limit-text">1 / 1</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="limit-progress" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <div class="premium-box">
+            <div class="premium-glow"></div>
+            <h3>💎 BizCharts Премиум</h3>
+            <p>Неограниченное количество отчетов, детальная аналитика и приоритетная поддержка.</p>
+            <button class="btn-premium ripple" onclick="buyPremium()">
+                Купить за 49 ⭐️
+            </button>
         </div>
     </div>
 
-    <!-- ЭКРАН 2: Ввод данных -->
-    <div class="container hidden" id="formScreen">
-        <h2 class="screen-title">Введите ваши цифры</h2>
-        <div class="input-group">
-            <label>💰 Доход за месяц</label>
-            <input type="number" id="income" placeholder="Например: 150000">
-        </div>
-        <div class="input-group">
-            <label>🛒 Закупка товара</label>
-            <input type="number" id="purchase" placeholder="Например: 50000">
-        </div>
-        <div class="input-group">
-            <label>📢 Реклама</label>
-            <input type="number" id="ads" placeholder="Например: 20000">
-        </div>
-        <div class="input-group">
-            <label>👨‍💻 Зарплаты</label>
-            <input type="number" id="salary" placeholder="Например: 30000">
-        </div>
-        <div class="input-group">
-            <label>📦 Прочее</label>
-            <input type="number" id="other" placeholder="Например: 10000">
-        </div>
-
-        <button class="btn-primary" id="generateBtn">Показать график</button>
-        <button class="btn-secondary" id="backBtn">Назад</button>
+    <!-- ================= НИЖНЯЯ НАВИГАЦИЯ ================= -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('home', this)">
+            <span class="icon">🏠</span>
+            <span class="text">Главная</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('history', this)">
+            <span class="icon">📂</span>
+            <span class="text">История</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('profile', this)">
+            <span class="icon">👤</span>
+            <span class="text">Профиль</span>
+        </button>
     </div>
 
-    <!-- ЭКРАН 3: Результат (График) -->
-    <div class="container hidden" id="resultScreen">
-        <h2 class="screen-title">Структура расходов</h2>
-        <div class="chart-container">
-            <canvas id="myChart"></canvas>
+    <!-- Модальное окно лимитов -->
+    <div class="modal-overlay hidden" id="limit-modal">
+        <div class="modal-content">
+            <div class="modal-icon">🔒</div>
+            <h3>Лимит достигнут</h3>
+            <p>В бесплатной версии можно сохранить только 1 отчет. Перейдите на Премиум, чтобы снять ограничения.</p>
+            <button class="btn-primary full-width" onclick="buyPremium()">Купить Премиум</button>
+            <button class="btn-secondary full-width mt-10" onclick="closeModal()">Позже</button>
         </div>
-        <p class="subtitle" id="adviceText"></p>
-        <button class="btn-primary" id="restartBtn">Построить ещё</button>
     </div>
 
     <script src="app.js"></script>
