@@ -14,9 +14,12 @@ if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     userData.name = u.first_name || "Пользователь";
     userData.username = u.username ? `@${u.username}` : "@username";
 }
-const avatarLetter = userData.name.charAt(0).toUpperCase();
-document.getElementById('main-avatar').innerText = avatarLetter;
-document.getElementById('profile-avatar').innerText = avatarLetter;
+
+// ВМЕСТО БУКВЫ "А" ТЕПЕРЬ ЛОГОТИП. 
+// Если логотип не грузится, раскомментируй 3 строки ниже, чтобы вернуть букву:
+// const avatarLetter = userData.name.charAt(0).toUpperCase();
+// document.getElementById('main-avatar').innerText = avatarLetter;
+// document.getElementById('profile-avatar').innerText = avatarLetter;
 
 function triggerHaptic(type = 'light') {
     if (tg && tg.HapticFeedback) {
@@ -49,9 +52,12 @@ let currentChartIndex = 0;
 
 // Если Премиум, показываем кнопку Корзины
 if (userData.isPremium) {
-    document.getElementById('trash-btn').style.display = 'block';
-    document.getElementById('profile-tariff').innerText = "Премиум";
-    document.getElementById('limit-desc').innerText = "Неограниченное количество отчетов.";
+    const trashBtn = document.getElementById('trash-btn');
+    if (trashBtn) trashBtn.style.display = 'block';
+    const tariffEl = document.getElementById('profile-tariff');
+    if (tariffEl) tariffEl.innerText = "Премиум";
+    const descEl = document.getElementById('limit-desc');
+    if (descEl) descEl.innerText = "Неограниченное количество отчетов.";
 }
 
 // --- ПРОВЕРКА ЛИМИТОВ ---
@@ -462,4 +468,27 @@ if (canvas) {
             this.alpha = Math.max(0.05, Math.min(0.6, this.alpha));
         }
         draw() {
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0
+            ctx.beginPath(); 
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 140, 0, ${this.alpha})`;
+            ctx.shadowBlur = 10; 
+            ctx.shadowColor = '#ff8c00';
+            ctx.fill(); 
+            ctx.shadowBlur = 0;
+        }
+    }
+    for (let i = 0; i < 40; i++) particles.push(new Particle());
+    function animateParticles() {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+}
+
+window.addEventListener('load', () => {
+    renderHistory();
+    if(document.getElementById('screen-profile').classList.contains('active')) {
+        updateProfile();
+    }
+});
