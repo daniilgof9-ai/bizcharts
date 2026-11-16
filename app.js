@@ -4,12 +4,16 @@ if (tg) {
     tg.setHeaderColor('#0d1117'); tg.setBackgroundColor('#0d1117');
 }
 
-// --- ПОЛУЧЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ---
-let userData = { name: "Пользователь", username: "@user" };
-if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-    const u = tg.initDataUnsafe.user;
-    userData.name = u.first_name || "Пользователь";
-    userData.username = u.username ? `@${u.username}` : "";
+// --- НАДЕЖНОЕ ПОЛУЧЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ---
+let userData = { name: "Пользователь", username: "@username" };
+try {
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        const u = tg.initDataUnsafe.user;
+        userData.name = u.first_name || "Пользователь";
+        userData.username = u.username ? `@${u.username}` : "@username";
+    }
+} catch (e) {
+    console.log("Ошибка получения данных Telegram:", e);
 }
 
 function triggerHaptic(type = 'light') {
@@ -22,6 +26,7 @@ function triggerHaptic(type = 'light') {
 
 function showToast(message, type = 'default') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'} ${message}`;
@@ -34,21 +39,29 @@ function showToast(message, type = 'default') {
 
 let currentChart = null;
 let currentData = null; 
-let history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
+let history = [];
+try {
+    history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
+} catch(e) {
+    history = [];
+    localStorage.removeItem('bizcharts_history');
+}
+
 let chartTypes = ['doughnut', 'bar', 'horizontalBar', 'line', 'comparison'];
 let currentChartIndex = 0;
 
 function switchTab(tabId, btnElement = null) {
     triggerHaptic('light');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(`screen-${tabId}`).classList.add('active');
+    const targetScreen = document.getElementById(`screen-${tabId}`);
+    if (targetScreen) targetScreen.classList.add('active');
 
     if (btnElement) {
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         btnElement.classList.add('active');
     } else {
         document.querySelectorAll('.nav-item').forEach(b => {
-            if (b.getAttribute('onclick').includes(tabId)) b.classList.add('active');
+            if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId)) b.classList.add('active');
             else b.classList.remove('active');
         });
     }
@@ -62,11 +75,11 @@ function updateHint(inputId, hintId) {
     const income = Number(document.getElementById('income').value) || 0;
     const hintEl = document.getElementById(hintId);
     
-    if (inputId !== 'income' && income > 0 && val > 0) {
+    if (hintEl && inputId !== 'income' && income > 0 && val > 0) {
         const percent = ((val / income) * 100).toFixed(1);
         hintEl.innerText = `Это ${percent}% от вашего дохода`;
         hintEl.classList.add('show');
-    } else {
+    } else if (hintEl) {
         hintEl.classList.remove('show');
     }
 }
@@ -94,31 +107,22 @@ function generateReport() {
     };
 
     switchTab('result');
-    document.getElementById('summary-skeleton').classList.remove('hidden');
-    document.getElementById('summary-real').classList.add('hidden');
-    document.getElementById('chart-loader').classList.remove('hidden');
-    document.getElementById('mainChart').style.opacity = '0';
+    
+    // Принудительно обновляем цифры перед показом
+    document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
+    document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
-    setTimeout(() => {
-        document.getElementById('summary-skeleton').classList.add('hidden');
-        document.getElementById('summary-real').classList.remove('hidden');
-        document.getElementById('chart-loader').classList.add('hidden');
-        document.getElementById('mainChart').style.opacity = '1';
+    let advice = "";
+    if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
+    else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
+    else advice = "Отличные показатели! Продолжайте в том же духе.";
+    document.getElementById('res-advice').innerText = advice;
 
-        document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
-        document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
-
-        let advice = "";
-        if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
-        else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
-        else advice = "Отличные показатели! Продолжайте в том же духе.";
-        document.getElementById('res-advice').innerText = advice;
-
-        drawChart(chartTypes[currentChartIndex]);
-    }, 600);
+    drawChart(chartTypes[currentChartIndex]);
 }
 
 function drawChart(type) {
+    if (!currentData) return;
     const ctx = document.getElementById('mainChart').getContext('2d');
     if (currentChart) currentChart.destroy();
 
@@ -142,14 +146,22 @@ function drawChart(type) {
             backgroundColor: ['#2EC4B6', '#E63946', '#ff8c00'], borderRadius: 6
         }];
     } else if (type === 'line') {
-        // График динамики (линия)
-        labels = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май'];
-        datasets = [{
-            label: 'Динамика прибыли', 
-            data: [d.profit * 0.5, d.profit * 0.8, d.profit * 0.6, d.profit * 0.9, d.profit],
-            borderColor: '#ff8c00', backgroundColor: 'rgba(255, 140, 0, 0.1)',
-            borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff'
-        }];
+        let sortedHistory = [...history].sort((a, b) => a.id - b.id);
+        if (sortedHistory.length < 2) {
+            labels = ['Нет данных', 'Мало данных'];
+            datasets = [{
+                label: 'Сохраните 2 отчета', data: [0, 0],
+                borderColor: '#30363d', borderWidth: 3, borderDash: [5, 5], tension: 0.4, fill: false, pointBackgroundColor: '#8b949e'
+            }];
+            showToast("Сохраните 2 отчета, чтобы увидеть динамику", "default");
+        } else {
+            labels = sortedHistory.map(item => item.date.slice(0, 5)); 
+            datasets = [{
+                label: 'Динамика прибыли', data: sortedHistory.map(item => item.profit),
+                borderColor: '#ff8c00', backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff'
+            }];
+        }
     }
 
     currentChart = new Chart(ctx, {
@@ -159,7 +171,7 @@ function drawChart(type) {
             responsive: true, maintainAspectRatio: false,
             indexAxis: type === 'horizontalBar' ? 'y' : 'x',
             plugins: { 
-                legend: { display: type === 'doughnut' || isComparison, labels: { color: '#8b949e', font: { family: 'Inter', size: 12 } } } 
+                legend: { display: type === 'doughnut' || isComparison || type === 'line', labels: { color: '#8b949e', font: { family: 'Inter', size: 12 } } } 
             },
             scales: type !== 'doughnut' ? {
                 x: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: '#30363d', drawBorder: false } },
@@ -172,24 +184,27 @@ function drawChart(type) {
 function changeChartType(type, btn) {
     triggerHaptic('light');
     document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if(btn) btn.classList.add('active');
     currentChartIndex = chartTypes.indexOf(type);
     drawChart(type);
 }
 
 let touchStartX = 0;
-document.getElementById('swipe-zone').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, {passive: true});
-document.getElementById('swipe-zone').addEventListener('touchend', e => {
-    let touchEndX = e.changedTouches[0].screenX;
-    if (touchEndX < touchStartX - 50) {
-        currentChartIndex = (currentChartIndex + 1) % chartTypes.length;
-        updateChartBySwipe();
-    }
-    if (touchEndX > touchStartX + 50) {
-        currentChartIndex = (currentChartIndex - 1 + chartTypes.length) % chartTypes.length;
-        updateChartBySwipe();
-    }
-}, {passive: true});
+const swipeZone = document.getElementById('swipe-zone');
+if (swipeZone) {
+    swipeZone.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, {passive: true});
+    swipeZone.addEventListener('touchend', e => {
+        let touchEndX = e.changedTouches[0].screenX;
+        if (touchEndX < touchStartX - 50) {
+            currentChartIndex = (currentChartIndex + 1) % chartTypes.length;
+            updateChartBySwipe();
+        }
+        if (touchEndX > touchStartX + 50) {
+            currentChartIndex = (currentChartIndex - 1 + chartTypes.length) % chartTypes.length;
+            updateChartBySwipe();
+        }
+    }, {passive: true});
+}
 
 function updateChartBySwipe() {
     triggerHaptic('light');
@@ -203,7 +218,7 @@ function updateChartBySwipe() {
 function saveToHistory() {
     triggerHaptic('medium');
     if (!currentData) return;
-    if (history.length >= 1) {
+    if (history.length >= 3) {
         document.getElementById('limit-modal').classList.remove('hidden');
         triggerHaptic('error');
         return;
@@ -222,50 +237,36 @@ function renderHistory() {
     const fullList = document.getElementById('full-history');
     const timerEl = document.getElementById('update-timer');
     
-    document.getElementById('history-count').innerText = history.length;
-    
-    homeList.innerHTML = ''; 
-    fullList.innerHTML = '';
+    if(document.getElementById('history-count')) document.getElementById('history-count').innerText = history.length;
+    if(homeList) homeList.innerHTML = ''; 
+    if(fullList) fullList.innerHTML = '';
 
-    // --- ЛОГИКА СЧЕТЧИКА ДНЕЙ ---
-    if (history.length > 0) {
-        // Берем дату самого свежего отчета (он первый в массиве, так как мы делаем unshift)
-        // Но для надежности лучше найти максимальный ID (самый новый)
+    if (history.length > 0 && timerEl) {
         const latestReport = history.reduce((prev, current) => (prev.id > current.id) ? prev : current);
-        
-        // Переводим ID (timestamp) в дату
         const lastDate = new Date(latestReport.id);
-        
-        // Прибавляем 30 дней
         const nextUpdateDate = new Date(lastDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-        
-        // Считаем разницу в днях между "сегодня" и датой обновления
         const today = new Date();
         const diffTime = nextUpdateDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays > 0) {
-            // Функция для правильного склонения (1 день, 2 дня, 5 дней)
             let dayWord = "дней";
             if (diffDays % 10 === 1 && diffDays % 100 !== 11) dayWord = "день";
             else if ([2, 3, 4].includes(diffDays % 10) && ![12, 13, 14].includes(diffDays % 100)) dayWord = "дня";
-            
             timerEl.innerText = `Обновить через ${diffDays} ${dayWord}`;
-            timerEl.style.color = "#8b949e"; // Серый цвет, пока время есть
+            timerEl.style.color = "#8b949e"; 
         } else {
             timerEl.innerText = `Пора обновить данные!`;
-            timerEl.style.color = "#E63946"; // Красный цвет
-            timerEl.style.animation = "pulse 2s infinite"; // Легкая пульсация
+            timerEl.style.color = "#E63946"; 
         }
         timerEl.style.display = "block";
-    } else {
+    } else if (timerEl) {
         timerEl.style.display = "none";
     }
 
-    // --- ОТРИСОВКА СПИСКА ---
     if (history.length === 0) {
-        homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет сохраненных отчетов</div>';
-        fullList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">История пуста</div>';
+        if(homeList) homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет сохраненных отчетов</div>';
+        if(fullList) fullList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">История пуста</div>';
         return;
     }
 
@@ -279,21 +280,21 @@ function renderHistory() {
                 <div class="history-amount">${item.profit > 0 ? '+' : ''}${item.profit.toLocaleString('ru-RU')} ₽</div>
             </div>
         `;
-        if (index < 3) homeList.innerHTML += card;
-        fullList.innerHTML += card;
+        if (index < 3 && homeList) homeList.innerHTML += card;
+        if (fullList) fullList.innerHTML += card;
     });
 
     let total = history.length;
     let sumProfit = history.reduce((acc, curr) => acc + curr.profit, 0);
     let avg = total > 0 ? Math.round(sumProfit / total) : 0;
     
-    document.getElementById('stat-total').innerText = total;
-    document.getElementById('stat-avg').innerText = `${avg.toLocaleString('ru-RU')} ₽`;
+    if(document.getElementById('stat-total')) document.getElementById('stat-total').innerText = total;
+    if(document.getElementById('stat-avg')) document.getElementById('stat-avg').innerText = `${avg.toLocaleString('ru-RU')} ₽`;
 }
+
 function loadFromHistory(index) {
     triggerHaptic('light');
     currentData = history[index];
-    
     document.getElementById('income').value = currentData.income;
     document.getElementById('purchase').value = currentData.purchase;
     document.getElementById('ads').value = currentData.ads;
@@ -307,26 +308,27 @@ function loadFromHistory(index) {
 }
 
 function updateProfile() {
-    // Установка имени и юзернейма
-    document.getElementById('profile-name').innerText = userData.name;
-    document.getElementById('profile-username').innerText = userData.username;
+    const nameEl = document.getElementById('profile-name');
+    const usernameEl = document.getElementById('profile-username');
     
-    let limit = 1;
+    if (nameEl) nameEl.innerText = userData.name;
+    if (usernameEl) usernameEl.innerText = userData.username;
+    
+    let limit = 3;
     let used = history.length > limit ? limit : history.length;
-    document.getElementById('limit-text').innerText = `${used} / ${limit}`;
+    if(document.getElementById('limit-text')) document.getElementById('limit-text').innerText = `${used} / ${limit}`;
+    
     let percent = (used / limit) * 100;
-    document.getElementById('limit-progress').style.width = `${percent}%`;
-    if (percent >= 100) {
-        document.getElementById('limit-progress').style.background = '#E63946';
-    } else {
-        document.getElementById('limit-progress').style.background = '#2EC4B6';
+    const progressBar = document.getElementById('limit-progress');
+    if (progressBar) {
+        progressBar.style.width = `${percent}%`;
+        progressBar.style.background = (percent >= 100) ? '#E63946' : '#2EC4B6';
     }
 }
 
 function buyPremium() {
     triggerHaptic('medium');
     if (tg) {
-        // Закрываем приложение и отправляем сигнал боту
         tg.sendData(JSON.stringify({ action: "buy_premium" }));
         tg.close();
     } else {
@@ -341,40 +343,46 @@ function closeModal() {
 
 // --- ФОН С ЧАСТИЦАМИ ---
 const canvas = document.getElementById('particleCanvas');
-const ctx = canvas.getContext('2d');
-let width = canvas.width = window.innerWidth;
-let height = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+if (canvas) {
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
 
-const particles = [];
-class Particle {
-    constructor() {
-        this.x = Math.random() * width; this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5;
-        this.radius = Math.random() * 1.5 + 0.5; this.alpha = Math.random() * 0.5 + 0.1;
+    const particles = [];
+    class Particle {
+        constructor() {
+            this.x = Math.random() * width; this.y = Math.random() * height;
+            this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5;
+            this.radius = Math.random() * 1.5 + 0.5; this.alpha = Math.random() * 0.5 + 0.1;
+        }
+        update() {
+            this.x += this.vx; this.y += this.vy;
+            if (this.x < 0 || this.x > width) this.vx *= -1;
+            if (this.y < 0 || this.y > height) this.vy *= -1;
+            this.alpha += (Math.random() - 0.5) * 0.02;
+            this.alpha = Math.max(0.05, Math.min(0.6, this.alpha));
+        }
+        draw() {
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 140, 0, ${this.alpha})`;
+            ctx.shadowBlur = 10; ctx.shadowColor = '#ff8c00';
+            ctx.fill(); ctx.shadowBlur = 0;
+        }
     }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        if (this.x < 0 || this.x > width) this.vx *= -1;
-        if (this.y < 0 || this.y > height) this.vy *= -1;
-        this.alpha += (Math.random() - 0.5) * 0.02;
-        this.alpha = Math.max(0.05, Math.min(0.6, this.alpha));
+    for (let i = 0; i < 40; i++) particles.push(new Particle());
+    function animateParticles() {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animateParticles);
     }
-    draw() {
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 140, 0, ${this.alpha})`;
-        ctx.shadowBlur = 10; ctx.shadowColor = '#ff8c00';
-        ctx.fill(); ctx.shadowBlur = 0;
-    }
+    animateParticles();
 }
-for (let i = 0; i < 40; i++) particles.push(new Particle());
-function animateParticles() {
-    ctx.clearRect(0, 0, width, height);
-    particles.forEach(p => { p.update(); p.draw(); });
-    requestAnimationFrame(animateParticles);
-}
-animateParticles();
 
 window.addEventListener('load', () => {
     renderHistory();
+    // Если мы на странице профиля, обновим и его
+    if(document.getElementById('screen-profile').classList.contains('active')) {
+        updateProfile();
+    }
 });
