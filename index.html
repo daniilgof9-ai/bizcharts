@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BizCharts — Аналитика</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="container">
+        <h1>
+            Контроль финансов<br>
+            за <span class="highlight-orange" id="priceMain">10 000 ₽</span><br>
+            <span class="strike-through">вместо 30 000 ₽</span>
+        </h1>
+
+        <p class="subtitle">
+            Узнай, куда уходят деньги за 60 секунд.<br>
+            Наглядные диаграммы без Excel и сложных таблиц.
+        </p>
+
+        <button class="btn-primary" id="actionBtn">Построить диаграмму</button>
+
+        <div class="stats-grid">
+            <div class="stat-card" onclick="triggerHaptic()">
+                <span class="stat-number" id="stat1">0</span>
+                <span class="stat-label">шаблонов</span>
+            </div>
+            <div class="stat-card" onclick="triggerHaptic()">
+                <span class="stat-number" id="stat2">0</span>
+                <span class="stat-label">видов графиков</span>
+            </div>
+            <div class="stat-card" onclick="triggerHaptic()">
+                <span class="stat-number" id="stat3">0</span>
+                <span class="stat-label">дня пробника</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
