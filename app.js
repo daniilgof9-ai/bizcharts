@@ -108,27 +108,31 @@ function generateReport() {
 
     switchTab('result');
     
-    // --- АНИМАЦИЯ ЗАГРУЗКИ (СКЕЛЕТОНЫ) ---
+    // Показываем скелетоны и прячем реальные цифры
     document.getElementById('summary-skeleton').classList.remove('hidden');
     document.getElementById('summary-real').classList.add('hidden');
     document.getElementById('chart-loader').classList.remove('hidden');
     document.getElementById('mainChart').style.opacity = '0';
 
+    // Ждем полсекунды и показываем результаты
     setTimeout(() => {
         document.getElementById('summary-skeleton').classList.add('hidden');
         document.getElementById('summary-real').classList.remove('hidden');
         document.getElementById('chart-loader').classList.add('hidden');
         document.getElementById('mainChart').style.opacity = '1';
 
+        // Обновляем цифры (теперь они точно на экране)
         document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
         document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
+        // Обновляем текст рекомендации
         let advice = "";
         if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
         else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
         else advice = "Отличные показатели! Продолжайте в том же духе.";
         document.getElementById('res-advice').innerText = advice;
 
+        // Рисуем график
         drawChart(chartTypes[currentChartIndex]);
     }, 600);
 }
