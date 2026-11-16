@@ -108,17 +108,29 @@ function generateReport() {
 
     switchTab('result');
     
-    // Принудительно обновляем цифры перед показом
-    document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
-    document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
+    // --- АНИМАЦИЯ ЗАГРУЗКИ (СКЕЛЕТОНЫ) ---
+    document.getElementById('summary-skeleton').classList.remove('hidden');
+    document.getElementById('summary-real').classList.add('hidden');
+    document.getElementById('chart-loader').classList.remove('hidden');
+    document.getElementById('mainChart').style.opacity = '0';
 
-    let advice = "";
-    if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
-    else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
-    else advice = "Отличные показатели! Продолжайте в том же духе.";
-    document.getElementById('res-advice').innerText = advice;
+    setTimeout(() => {
+        document.getElementById('summary-skeleton').classList.add('hidden');
+        document.getElementById('summary-real').classList.remove('hidden');
+        document.getElementById('chart-loader').classList.add('hidden');
+        document.getElementById('mainChart').style.opacity = '1';
 
-    drawChart(chartTypes[currentChartIndex]);
+        document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
+        document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
+
+        let advice = "";
+        if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
+        else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
+        else advice = "Отличные показатели! Продолжайте в том же духе.";
+        document.getElementById('res-advice').innerText = advice;
+
+        drawChart(chartTypes[currentChartIndex]);
+    }, 600);
 }
 
 function drawChart(type) {
@@ -381,7 +393,6 @@ if (canvas) {
 
 window.addEventListener('load', () => {
     renderHistory();
-    // Если мы на странице профиля, обновим и его
     if(document.getElementById('screen-profile').classList.contains('active')) {
         updateProfile();
     }
