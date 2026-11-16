@@ -4,6 +4,14 @@ if (tg) {
     tg.setHeaderColor('#0d1117'); tg.setBackgroundColor('#0d1117');
 }
 
+// --- ПОЛУЧЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ---
+let userData = { name: "Пользователь", username: "@user" };
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    userData.name = u.first_name || "Пользователь";
+    userData.username = u.username ? `@${u.username}` : "";
+}
+
 function triggerHaptic(type = 'light') {
     if (tg && tg.HapticFeedback) {
         if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
@@ -12,28 +20,24 @@ function triggerHaptic(type = 'light') {
     }
 }
 
-// Кастомные уведомления (Toast)
 function showToast(message, type = 'default') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'} ${message}`;
     container.appendChild(toast);
-
     setTimeout(() => {
         toast.style.animation = 'toastOut 0.3s forwards';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
-// Глобальные переменные
 let currentChart = null;
 let currentData = null; 
 let history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
 let chartTypes = ['doughnut', 'bar', 'horizontalBar', 'line', 'comparison'];
 let currentChartIndex = 0;
 
-// --- НАВИГАЦИЯ ---
 function switchTab(tabId, btnElement = null) {
     triggerHaptic('light');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -50,10 +54,9 @@ function switchTab(tabId, btnElement = null) {
     }
 
     if (tabId === 'home' || tabId === 'history') renderHistory();
-    if (tabId === 'profile') updateProfileStats();
+    if (tabId === 'profile') updateProfile();
 }
 
-// --- УМНЫЕ ПОДСКАЗКИ В ФОРМЕ ---
 function updateHint(inputId, hintId) {
     const val = Number(document.getElementById(inputId).value) || 0;
     const income = Number(document.getElementById('income').value) || 0;
@@ -68,7 +71,6 @@ function updateHint(inputId, hintId) {
     }
 }
 
-// --- ГЕНЕРАЦИЯ ОТЧЕТА ---
 function generateReport() {
     triggerHaptic('medium');
     const income = Number(document.getElementById('income').value) || 0;
@@ -91,14 +93,12 @@ function generateReport() {
         income, purchase, ads, salary, other, totalExpenses, profit
     };
 
-    // Переключаем экран со скелетоном
     switchTab('result');
     document.getElementById('summary-skeleton').classList.remove('hidden');
     document.getElementById('summary-real').classList.add('hidden');
     document.getElementById('chart-loader').classList.remove('hidden');
     document.getElementById('mainChart').style.opacity = '0';
 
-    // Имитация загрузки (для красоты)
     setTimeout(() => {
         document.getElementById('summary-skeleton').classList.add('hidden');
         document.getElementById('summary-real').classList.remove('hidden');
@@ -118,7 +118,6 @@ function generateReport() {
     }, 600);
 }
 
-// --- ОТРИСОВКА ГРАФИКОВ ---
 function drawChart(type) {
     const ctx = document.getElementById('mainChart').getContext('2d');
     if (currentChart) currentChart.destroy();
@@ -142,6 +141,15 @@ function drawChart(type) {
             label: 'Сумма', data: [d.income, d.totalExpenses, d.profit],
             backgroundColor: ['#2EC4B6', '#E63946', '#ff8c00'], borderRadius: 6
         }];
+    } else if (type === 'line') {
+        // График динамики (линия)
+        labels = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май'];
+        datasets = [{
+            label: 'Динамика прибыли', 
+            data: [d.profit * 0.5, d.profit * 0.8, d.profit * 0.6, d.profit * 0.9, d.profit],
+            borderColor: '#ff8c00', backgroundColor: 'rgba(255, 140, 0, 0.1)',
+            borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff'
+        }];
     }
 
     currentChart = new Chart(ctx, {
@@ -150,10 +158,12 @@ function drawChart(type) {
         options: {
             responsive: true, maintainAspectRatio: false,
             indexAxis: type === 'horizontalBar' ? 'y' : 'x',
-            plugins: { legend: { display: type === 'doughnut' || isComparison, labels: { color: '#8b949e', font: { family: 'Inter', size: 12 } } } },
+            plugins: { 
+                legend: { display: type === 'doughnut' || isComparison, labels: { color: '#8b949e', font: { family: 'Inter', size: 12 } } } 
+            },
             scales: type !== 'doughnut' ? {
-                x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
-                y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }
+                x: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: '#30363d', drawBorder: false } },
+                y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: '#30363d', drawBorder: false } }
             } : {}
         }
     });
@@ -167,16 +177,15 @@ function changeChartType(type, btn) {
     drawChart(type);
 }
 
-// --- СВАЙП ГРАФИКОВ ---
 let touchStartX = 0;
 document.getElementById('swipe-zone').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, {passive: true});
 document.getElementById('swipe-zone').addEventListener('touchend', e => {
     let touchEndX = e.changedTouches[0].screenX;
-    if (touchEndX < touchStartX - 50) { // Свайп влево
+    if (touchEndX < touchStartX - 50) {
         currentChartIndex = (currentChartIndex + 1) % chartTypes.length;
         updateChartBySwipe();
     }
-    if (touchEndX > touchStartX + 50) { // Свайп вправо
+    if (touchEndX > touchStartX + 50) {
         currentChartIndex = (currentChartIndex - 1 + chartTypes.length) % chartTypes.length;
         updateChartBySwipe();
     }
@@ -191,17 +200,14 @@ function updateChartBySwipe() {
     drawChart(chartTypes[currentChartIndex]);
 }
 
-// --- ИСТОРИЯ ---
 function saveToHistory() {
     triggerHaptic('medium');
     if (!currentData) return;
-
     if (history.length >= 1) {
         document.getElementById('limit-modal').classList.remove('hidden');
         triggerHaptic('error');
         return;
     }
-
     if (!history.find(item => item.id === currentData.id)) {
         history.unshift(currentData);
         localStorage.setItem('bizcharts_history', JSON.stringify(history));
@@ -219,8 +225,8 @@ function renderHistory() {
     homeList.innerHTML = ''; fullList.innerHTML = '';
 
     if (history.length === 0) {
-        homeList.innerHTML = '<div class="empty-state">Нет сохраненных отчетов</div>';
-        fullList.innerHTML = '<div class="empty-state">История пуста</div>';
+        homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет сохраненных отчетов</div>';
+        fullList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">История пуста</div>';
         return;
     }
 
@@ -238,7 +244,6 @@ function renderHistory() {
         fullList.innerHTML += card;
     });
 
-    // Обновляем статистику на главной
     let total = history.length;
     let sumProfit = history.reduce((acc, curr) => acc + curr.profit, 0);
     let avg = total > 0 ? Math.round(sumProfit / total) : 0;
@@ -263,8 +268,11 @@ function loadFromHistory(index) {
     drawChart(chartTypes[currentChartIndex]);
 }
 
-// --- ПРОФИЛЬ И ОПЛАТА ---
-function updateProfileStats() {
+function updateProfile() {
+    // Установка имени и юзернейма
+    document.getElementById('profile-name').innerText = userData.name;
+    document.getElementById('profile-username').innerText = userData.username;
+    
     let limit = 1;
     let used = history.length > limit ? limit : history.length;
     document.getElementById('limit-text').innerText = `${used} / ${limit}`;
@@ -280,7 +288,9 @@ function updateProfileStats() {
 function buyPremium() {
     triggerHaptic('medium');
     if (tg) {
+        // Закрываем приложение и отправляем сигнал боту
         tg.sendData(JSON.stringify({ action: "buy_premium" }));
+        tg.close();
     } else {
         showToast("Тест: Оплата 49 Stars", "default");
     }
@@ -327,7 +337,6 @@ function animateParticles() {
 }
 animateParticles();
 
-// --- СТАРТ ---
 window.addEventListener('load', () => {
     renderHistory();
 });
