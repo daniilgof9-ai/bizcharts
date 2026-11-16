@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BizCharts — Аналитика</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключаем Chart.js для графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="particleCanvas"></canvas>
 
-    <div class="container">
-               <h1>
-            Аналитика бизнеса<br>
-            всего за <span class="highlight-orange" id="priceMain">49 ⭐️</span><br>
+    <!-- ЭКРАН 1: Главный (Витрина) -->
+    <div class="container" id="mainScreen">
+        <h1>
+            Контроль финансов<br>
+            за <span class="highlight-orange" id="priceMain">49 ⭐️</span><br>
             <span class="strike-through">вместо 500 ⭐️</span>
         </h1>
 
@@ -22,7 +25,7 @@
             Наглядные диаграммы без Excel и сложных таблиц.
         </p>
 
-        <button class="btn-primary" id="actionBtn">Построить диаграмму</button>
+        <button class="btn-primary" id="startBtn">Построить диаграмму</button>
 
         <div class="stats-grid">
             <div class="stat-card" onclick="triggerHaptic()">
@@ -38,6 +41,44 @@
                 <span class="stat-label">дня пробника</span>
             </div>
         </div>
+    </div>
+
+    <!-- ЭКРАН 2: Ввод данных -->
+    <div class="container hidden" id="formScreen">
+        <h2 class="screen-title">Введите ваши цифры</h2>
+        <div class="input-group">
+            <label>💰 Доход за месяц</label>
+            <input type="number" id="income" placeholder="Например: 150000">
+        </div>
+        <div class="input-group">
+            <label>🛒 Закупка товара</label>
+            <input type="number" id="purchase" placeholder="Например: 50000">
+        </div>
+        <div class="input-group">
+            <label>📢 Реклама</label>
+            <input type="number" id="ads" placeholder="Например: 20000">
+        </div>
+        <div class="input-group">
+            <label>👨‍💻 Зарплаты</label>
+            <input type="number" id="salary" placeholder="Например: 30000">
+        </div>
+        <div class="input-group">
+            <label>📦 Прочее</label>
+            <input type="number" id="other" placeholder="Например: 10000">
+        </div>
+
+        <button class="btn-primary" id="generateBtn">Показать график</button>
+        <button class="btn-secondary" id="backBtn">Назад</button>
+    </div>
+
+    <!-- ЭКРАН 3: Результат (График) -->
+    <div class="container hidden" id="resultScreen">
+        <h2 class="screen-title">Структура расходов</h2>
+        <div class="chart-container">
+            <canvas id="myChart"></canvas>
+        </div>
+        <p class="subtitle" id="adviceText"></p>
+        <button class="btn-primary" id="restartBtn">Построить ещё</button>
     </div>
 
     <script src="app.js"></script>
