@@ -220,10 +220,49 @@ function saveToHistory() {
 function renderHistory() {
     const homeList = document.getElementById('home-history');
     const fullList = document.getElementById('full-history');
+    const timerEl = document.getElementById('update-timer');
+    
     document.getElementById('history-count').innerText = history.length;
     
-    homeList.innerHTML = ''; fullList.innerHTML = '';
+    homeList.innerHTML = ''; 
+    fullList.innerHTML = '';
 
+    // --- ЛОГИКА СЧЕТЧИКА ДНЕЙ ---
+    if (history.length > 0) {
+        // Берем дату самого свежего отчета (он первый в массиве, так как мы делаем unshift)
+        // Но для надежности лучше найти максимальный ID (самый новый)
+        const latestReport = history.reduce((prev, current) => (prev.id > current.id) ? prev : current);
+        
+        // Переводим ID (timestamp) в дату
+        const lastDate = new Date(latestReport.id);
+        
+        // Прибавляем 30 дней
+        const nextUpdateDate = new Date(lastDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        
+        // Считаем разницу в днях между "сегодня" и датой обновления
+        const today = new Date();
+        const diffTime = nextUpdateDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) {
+            // Функция для правильного склонения (1 день, 2 дня, 5 дней)
+            let dayWord = "дней";
+            if (diffDays % 10 === 1 && diffDays % 100 !== 11) dayWord = "день";
+            else if ([2, 3, 4].includes(diffDays % 10) && ![12, 13, 14].includes(diffDays % 100)) dayWord = "дня";
+            
+            timerEl.innerText = `Обновить через ${diffDays} ${dayWord}`;
+            timerEl.style.color = "#8b949e"; // Серый цвет, пока время есть
+        } else {
+            timerEl.innerText = `Пора обновить данные!`;
+            timerEl.style.color = "#E63946"; // Красный цвет
+            timerEl.style.animation = "pulse 2s infinite"; // Легкая пульсация
+        }
+        timerEl.style.display = "block";
+    } else {
+        timerEl.style.display = "none";
+    }
+
+    // --- ОТРИСОВКА СПИСКА ---
     if (history.length === 0) {
         homeList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">Нет сохраненных отчетов</div>';
         fullList.innerHTML = '<div class="empty-state" style="color:#8b949e;text-align:center;padding:20px;">История пуста</div>';
@@ -251,7 +290,6 @@ function renderHistory() {
     document.getElementById('stat-total').innerText = total;
     document.getElementById('stat-avg').innerText = `${avg.toLocaleString('ru-RU')} ₽`;
 }
-
 function loadFromHistory(index) {
     triggerHaptic('light');
     currentData = history[index];

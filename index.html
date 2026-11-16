@@ -12,19 +12,27 @@
     <canvas id="particleCanvas"></canvas>
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- ================= ЭКРАН: ГЛАВНАЯ ================= -->
+        <!-- ================= ЭКРАН: ГЛАВНАЯ ================= -->
     <div class="screen active" id="screen-home">
         <div class="header">
             <h1>Главная</h1>
             <div class="avatar" onclick="switchTab('profile')">A</div>
         </div>
+        
         <div class="hero-card">
             <h2>С возвращением!</h2>
             <p>Готовы проанализировать свои финансы?</p>
-            <button class="btn-primary ripple" onclick="switchTab('form')">
-                <span class="btn-icon-left">+</span> Создать отчет
-            </button>
+            <!-- Две кнопки в ряд -->
+            <div class="hero-actions">
+                <button class="btn-primary ripple" onclick="switchTab('form')">
+                    <span class="btn-icon-left">+</span> Создать отчет
+                </button>
+                <button class="btn-secondary ripple" onclick="switchTab('history')" style="width: 45%;">
+                    📂 Все
+                </button>
+            </div>
         </div>
+
         <div class="stats-row">
             <div class="mini-stat">
                 <span class="mini-label">Всего отчетов</span>
@@ -35,9 +43,11 @@
                 <span class="mini-value green" id="stat-avg">0 ₽</span>
             </div>
         </div>
+
         <div class="section-header">
             <h3 class="section-title">Последние отчеты</h3>
-            <button class="btn-text" onclick="switchTab('history')">Все</button>
+            <!-- Сюда будет выводиться счетчик дней -->
+            <span class="update-timer" id="update-timer" style="color: #E63946; font-size: 12px; font-weight: 600;"></span>
         </div>
         <div id="home-history" class="history-list"></div>
     </div>

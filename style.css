@@ -172,5 +172,32 @@ body {
 .modal-content h3 { font-size: 20px; margin-bottom: 10px; font-weight: 800; }
 .modal-content p { font-size: 14px; color: #8b949e; margin-bottom: 25px; line-height: 1.5; }
 
+/* --- ОБНОВЛЕННАЯ ГЛАВНАЯ --- */
+.hero-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.hero-actions .btn-primary {
+    flex: 1; /* Кнопка "Создать" занимает оставшееся место */
+}
+
+.hero-actions .btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    font-size: 14px;
+    background: rgba(46, 196, 182, 0.1);
+    border-color: rgba(46, 196, 182, 0.5);
+    color: #2EC4B6;
+}
+
+.hero-actions .btn-secondary:active {
+    background: rgba(46, 196, 182, 0.2);
+}
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUpScale { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
