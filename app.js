@@ -4,16 +4,11 @@ if (tg) {
     tg.setHeaderColor('#0d1117'); tg.setBackgroundColor('#0d1117');
 }
 
-// --- НАДЕЖНОЕ ПОЛУЧЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ---
 let userData = { name: "Пользователь", username: "@username" };
-try {
-    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        const u = tg.initDataUnsafe.user;
-        userData.name = u.first_name || "Пользователь";
-        userData.username = u.username ? `@${u.username}` : "@username";
-    }
-} catch (e) {
-    console.log("Ошибка получения данных Telegram:", e);
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    userData.name = u.first_name || "Пользователь";
+    userData.username = u.username ? `@${u.username}` : "@username";
 }
 
 function triggerHaptic(type = 'light') {
@@ -39,22 +34,14 @@ function showToast(message, type = 'default') {
 
 let currentChart = null;
 let currentData = null; 
-let history = [];
-try {
-    history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
-} catch(e) {
-    history = [];
-    localStorage.removeItem('bizcharts_history');
-}
-
+let history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
 let chartTypes = ['doughnut', 'bar', 'horizontalBar', 'line', 'comparison'];
 let currentChartIndex = 0;
 
 function switchTab(tabId, btnElement = null) {
     triggerHaptic('light');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const targetScreen = document.getElementById(`screen-${tabId}`);
-    if (targetScreen) targetScreen.classList.add('active');
+    document.getElementById(`screen-${tabId}`).classList.add('active');
 
     if (btnElement) {
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -106,35 +93,19 @@ function generateReport() {
         income, purchase, ads, salary, other, totalExpenses, profit
     };
 
+    // Мгновенно переключаем вкладку и обновляем данные
     switchTab('result');
     
-    // Показываем скелетоны и прячем реальные цифры
-    document.getElementById('summary-skeleton').classList.remove('hidden');
-    document.getElementById('summary-real').classList.add('hidden');
-    document.getElementById('chart-loader').classList.remove('hidden');
-    document.getElementById('mainChart').style.opacity = '0';
+    document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
+    document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
-    // Ждем полсекунды и показываем результаты
-    setTimeout(() => {
-        document.getElementById('summary-skeleton').classList.add('hidden');
-        document.getElementById('summary-real').classList.remove('hidden');
-        document.getElementById('chart-loader').classList.add('hidden');
-        document.getElementById('mainChart').style.opacity = '1';
+    let advice = "";
+    if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
+    else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
+    else advice = "Отличные показатели! Продолжайте в том же духе.";
+    document.getElementById('res-advice').innerText = advice;
 
-        // Обновляем цифры
-        document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
-        document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
-
-        // Обновляем текст рекомендации
-        let advice = "";
-        if (profit < 0) advice = "Вы работаете в минус! Срочно проверьте расходы.";
-        else if (ads > totalExpenses * 0.4) advice = "Реклама съедает почти половину расходов. Проверьте окупаемость.";
-        else advice = "Отличные показатели! Продолжайте в том же духе.";
-        document.getElementById('res-advice').innerText = advice;
-
-        // Рисуем график
-        drawChart(chartTypes[currentChartIndex]);
-    }, 600);
+    drawChart(chartTypes[currentChartIndex]);
 }
 
 function drawChart(type) {
