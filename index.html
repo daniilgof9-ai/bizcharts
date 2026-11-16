@@ -106,34 +106,35 @@
             <button class="btn-icon ripple" onclick="switchTab('home')">✕</button>
         </div>
         
-        <!-- Блок с цифрами (без скрытия) -->
-        <div class="summary-cards">
-            <div class="summary-card">
-                <span class="label">Прибыль</span>
-                <span class="value" id="res-profit" style="color: #2EC4B6;">0 ₽</span>
+        <!-- НОВЫЙ ДИЗАЙН: Объединенный блок -->
+        <div class="result-dashboard">
+            <div class="res-metrics">
+                <div class="res-box">
+                    <span class="res-label">Чистая прибыль</span>
+                    <span class="res-value" id="res-profit">— ₽</span>
+                </div>
+                <div class="res-box">
+                    <span class="res-label">Общие расходы</span>
+                    <span class="res-value res-red" id="res-expenses">— ₽</span>
+                </div>
             </div>
-            <div class="summary-card">
-                <span class="label">Расходы</span>
-                <span class="value red" id="res-expenses" style="color: #E63946;">0 ₽</span>
+            
+            <div class="advice-inline">
+                <span class="advice-icon">💡</span>
+                <span class="advice-text" id="res-advice">Ожидание данных...</span>
             </div>
         </div>
         
+        <!-- Кнопки графиков -->
         <div class="chart-tabs">
-            <button class="chart-tab active" onclick="changeChartType('doughnut', this)">🍩</button>
-            <button class="chart-tab" onclick="changeChartType('bar', this)">📊</button>
-            <button class="chart-tab" onclick="changeChartType('horizontalBar', this)">📉</button>
-            <button class="chart-tab" onclick="changeChartType('line', this)">📈</button>
-            <button class="chart-tab" onclick="changeChartType('comparison', this)">⚖️</button>
+            <button class="chart-tab active" onclick="changeChartType('doughnut', this)">Круг</button>
+            <button class="chart-tab" onclick="changeChartType('bar', this)">Столбцы</button>
+            <button class="chart-tab" onclick="changeChartType('line', this)">Линия</button>
+            <button class="chart-tab" onclick="changeChartType('comparison', this)">Итог</button>
         </div>
         
         <div class="chart-container swipe-zone" id="swipe-zone">
             <canvas id="mainChart"></canvas>
-        </div>
-        
-        <!-- Блок с рекомендацией -->
-        <div class="advice-box" id="res-advice-box">
-            <span class="advice-icon">💡</span>
-            <p class="advice" id="res-advice">Здесь появится рекомендация</p>
         </div>
         
         <button class="btn-primary full-width mt-20 ripple" onclick="saveToHistory()">

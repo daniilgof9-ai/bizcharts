@@ -35,7 +35,7 @@ function showToast(message, type = 'default') {
 let currentChart = null;
 let currentData = null; 
 let history = JSON.parse(localStorage.getItem('bizcharts_history')) || [];
-let chartTypes = ['doughnut', 'bar', 'horizontalBar', 'line', 'comparison'];
+let chartTypes = ['doughnut', 'bar', 'line', 'comparison'];
 let currentChartIndex = 0;
 
 function switchTab(tabId, btnElement = null) {
@@ -93,9 +93,9 @@ function generateReport() {
         income, purchase, ads, salary, other, totalExpenses, profit
     };
 
-    // Мгновенно переключаем вкладку и обновляем данные
     switchTab('result');
     
+    // Мгновенное обновление
     document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
     document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
@@ -117,7 +117,6 @@ function drawChart(type) {
     const isComparison = type === 'comparison';
     let chartType = type;
     if (isComparison) chartType = 'bar';
-    if (type === 'horizontalBar') chartType = 'bar';
 
     let labels = ['Закупка', 'Реклама', 'Зарплата', 'Прочее'];
     let datasets = [{
@@ -156,7 +155,6 @@ function drawChart(type) {
         data: { labels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
-            indexAxis: type === 'horizontalBar' ? 'y' : 'x',
             plugins: { 
                 legend: { display: type === 'doughnut' || isComparison || type === 'line', labels: { color: '#8b949e', font: { family: 'Inter', size: 12 } } } 
             },
