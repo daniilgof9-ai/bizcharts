@@ -40,7 +40,13 @@ function animateValue(obj, start, end, duration, isPrice = false) {
 
 window.addEventListener('load', () => {
     setTimeout(() => {
-        animateValue(document.getElementById('priceMain'), 0, 10000, 1500, true);
+        animateValue(document.getElementById('priceMain'), 0, 49, 1200, false);
+        
+        // Принудительно добавляем звезду после завершения анимации
+        setTimeout(() => {
+            document.getElementById('priceMain').innerHTML += ' ⭐️';
+        }, 1300);
+
         animateValue(document.getElementById('stat1'), 0, 15, 1000);
         animateValue(document.getElementById('stat2'), 0, 5, 1200);
         animateValue(document.getElementById('stat3'), 0, 3, 800);
