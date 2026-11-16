@@ -106,11 +106,13 @@
             <button class="btn-icon ripple" onclick="switchTab('home')">✕</button>
         </div>
         
+        <!-- Скелетоны -->
         <div class="summary-cards" id="summary-skeleton">
             <div class="skeleton summary-card"></div>
             <div class="skeleton summary-card"></div>
         </div>
         
+        <!-- Реальные данные -->
         <div class="summary-cards hidden" id="summary-real">
             <div class="summary-card">
                 <span class="label">Прибыль</span>
@@ -122,12 +124,13 @@
             </div>
         </div>
         
+        <!-- Кнопки с текстом (чтобы не было пустых плашек) -->
         <div class="chart-tabs">
-            <button class="chart-tab active" onclick="changeChartType('doughnut', this)">🍩</button>
-            <button class="chart-tab" onclick="changeChartType('bar', this)">📊</button>
-            <button class="chart-tab" onclick="changeChartType('horizontalBar', this)">📉</button>
-            <button class="chart-tab" onclick="changeChartType('line', this)">📈</button>
-            <button class="chart-tab" onclick="changeChartType('comparison', this)">⚖️</button>
+            <button class="chart-tab active" onclick="changeChartType('doughnut', this)" style="font-size: 12px;">🍩 Круг</button>
+            <button class="chart-tab" onclick="changeChartType('bar', this)" style="font-size: 12px;">📊 Столбцы</button>
+            <button class="chart-tab" onclick="changeChartType('horizontalBar', this)" style="font-size: 12px;">📉 Полосы</button>
+            <button class="chart-tab" onclick="changeChartType('line', this)" style="font-size: 12px;">📈 Линия</button>
+            <button class="chart-tab" onclick="changeChartType('comparison', this)" style="font-size: 12px;">⚖️ Итог</button>
         </div>
         
         <div class="chart-container swipe-zone" id="swipe-zone">

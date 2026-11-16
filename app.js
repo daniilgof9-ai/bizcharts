@@ -121,7 +121,7 @@ function generateReport() {
         document.getElementById('chart-loader').classList.add('hidden');
         document.getElementById('mainChart').style.opacity = '1';
 
-        // Обновляем цифры (теперь они точно на экране)
+        // Обновляем цифры
         document.getElementById('res-profit').innerText = `${profit.toLocaleString('ru-RU')} ₽`;
         document.getElementById('res-expenses').innerText = `${totalExpenses.toLocaleString('ru-RU')} ₽`;
 
