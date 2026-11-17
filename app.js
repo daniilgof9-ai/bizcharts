@@ -6,8 +6,10 @@ if (tg) {
 
 // --- ПОЛЬЗОВАТЕЛЬ ---
 let userData = { name: "Пользователь", username: "@username", isPremium: false };
-// Для теста Премиума раскомментируй строчку ниже:
-// userData.isPremium = true;
+
+// Загружаем сохраненный статус премиума из памяти
+const savedPremium = localStorage.getItem('bizcharts_isPremium');
+if (savedPremium === 'true') userData.isPremium = true;
 
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
@@ -15,11 +17,38 @@ if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     userData.username = u.username ? `@${u.username}` : "@username";
 }
 
-// ВМЕСТО БУКВЫ "А" ТЕПЕРЬ ЛОГОТИП. 
-// Если логотип не грузится, раскомментируй 3 строки ниже, чтобы вернуть букву:
-// const avatarLetter = userData.name.charAt(0).toUpperCase();
-// document.getElementById('main-avatar').innerText = avatarLetter;
-// document.getElementById('profile-avatar').innerText = avatarLetter;
+// Применяем визуальные настройки (корзина, тариф и т.д.) при загрузке
+function applyUISettings() {
+    const trashBtn = document.getElementById('trash-btn');
+    const tariffEl = document.getElementById('profile-tariff');
+    const descEl = document.getElementById('limit-desc');
+    const toggleBtn = document.getElementById('dev-toggle-btn');
+
+    if (userData.isPremium) {
+        if(trashBtn) trashBtn.style.display = 'block';
+        if(tariffEl) { tariffEl.innerText = "Премиум"; tariffEl.style.color = "#2EC4B6"; }
+        if(descEl) descEl.innerText = "Неограниченное количество отчетов.";
+        if(toggleBtn) { toggleBtn.innerText = "⚙️ Переключить на Базовый"; toggleBtn.style.color = "#2EC4B6"; toggleBtn.style.borderColor = "#2EC4B6"; }
+    } else {
+        if(trashBtn) trashBtn.style.display = 'none';
+        if(tariffEl) { tariffEl.innerText = "Базовый"; tariffEl.style.color = "#ff8c00"; }
+        if(descEl) descEl.innerText = "Бесплатный тариф: 1 слот. Удаление = ожидание 7 дней.";
+        if(toggleBtn) { toggleBtn.innerText = "⚙️ Переключить на Премиум"; toggleBtn.style.color = "#8b949e"; toggleBtn.style.borderColor = "#8b949e"; }
+    }
+}
+
+// Функция переключения тарифа
+function toggleDevPremium() {
+    triggerHaptic('medium');
+    userData.isPremium = !userData.isPremium;
+    localStorage.setItem('bizcharts_isPremium', userData.isPremium);
+    
+    applyUISettings();
+    renderHistory(); 
+    updateProfile();
+    
+    showToast(userData.isPremium ? "Тариф изменен на Премиум" : "Тариф изменен на Базовый", "success");
+}
 
 function triggerHaptic(type = 'light') {
     if (tg && tg.HapticFeedback) {
@@ -49,16 +78,6 @@ let trash = JSON.parse(localStorage.getItem('bizcharts_trash')) || [];
 let deletedAt = Number(localStorage.getItem('bizcharts_deletedAt')) || 0;
 let chartTypes = ['doughnut', 'bar', 'line', 'comparison'];
 let currentChartIndex = 0;
-
-// Если Премиум, показываем кнопку Корзины
-if (userData.isPremium) {
-    const trashBtn = document.getElementById('trash-btn');
-    if (trashBtn) trashBtn.style.display = 'block';
-    const tariffEl = document.getElementById('profile-tariff');
-    if (tariffEl) tariffEl.innerText = "Премиум";
-    const descEl = document.getElementById('limit-desc');
-    if (descEl) descEl.innerText = "Неограниченное количество отчетов.";
-}
 
 // --- ПРОВЕРКА ЛИМИТОВ ---
 function canCreateReport() {
@@ -419,14 +438,15 @@ function updateProfile() {
     if (document.getElementById('profile-name')) document.getElementById('profile-name').innerText = userData.name;
     if (document.getElementById('profile-username')) document.getElementById('profile-username').innerText = userData.username;
     
-    let used = history.length > 0 ? 1 : 0;
-    if(document.getElementById('limit-text')) document.getElementById('limit-text').innerText = `${used} / 1`;
+    let used = history.length > 0 ? (userData.isPremium ? history.length : 1) : 0;
+    let limitText = userData.isPremium ? "∞" : "1";
+    if(document.getElementById('limit-text')) document.getElementById('limit-text').innerText = `${used} / ${limitText}`;
     
-    let percent = used * 100;
+    let percent = userData.isPremium ? 100 : (used * 100);
     const progressBar = document.getElementById('limit-progress');
     if (progressBar) {
         progressBar.style.width = `${percent}%`;
-        progressBar.style.background = (percent >= 100) ? '#E63946' : '#2EC4B6';
+        progressBar.style.background = (percent >= 100 && !userData.isPremium) ? '#E63946' : '#2EC4B6';
     }
 }
 
@@ -487,6 +507,7 @@ if (canvas) {
 }
 
 window.addEventListener('load', () => {
+    applyUISettings(); // Применяем настройки тарифа
     renderHistory();
     if(document.getElementById('screen-profile').classList.contains('active')) {
         updateProfile();

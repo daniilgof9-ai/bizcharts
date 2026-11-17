@@ -16,7 +16,10 @@
     <div class="screen active" id="screen-home">
         <div class="header">
             <h1>Главная</h1>
-            <div class="avatar" id="main-avatar" onclick="switchTab('profile')">A</div>
+            <!-- ТУТ ЛОГОТИП -->
+            <div class="avatar" id="main-avatar" onclick="switchTab('profile')">
+                <img src="logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            </div>
         </div>
         
         <div class="hero-card">
@@ -147,7 +150,6 @@
             <span class="badge" id="history-count">0</span>
         </div>
         
-        <!-- Кнопка Корзины (Показывается только в Премиум, но мы скроем её через CSS/JS) -->
         <button id="trash-btn" class="btn-secondary full-width ripple" style="margin-bottom: 15px; border-color: #E63946; color: #E63946; display: none;" onclick="switchTab('trash')">
             🗑️ Корзина (<span id="trash-count">0</span>)
         </button>
@@ -155,7 +157,7 @@
         <div id="full-history" class="history-list"></div>
     </div>
 
-    <!-- ================= ЭКРАН: КОРЗИНА (Только Премиум) ================= -->
+    <!-- ================= ЭКРАН: КОРЗИНА ================= -->
     <div class="screen" id="screen-trash">
         <div class="header">
             <h1>Корзина</h1>
@@ -171,7 +173,10 @@
             <h1>Профиль</h1>
         </div>
         <div class="profile-card">
-            <div class="avatar big" id="profile-avatar">A</div>
+            <!-- ТУТ ЛОГОТИП -->
+            <div class="avatar big" id="profile-avatar">
+                <img src="logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            </div>
             <h2 id="profile-name">Пользователь</h2>
             <p class="username" id="profile-username" style="color: #8b949e; font-size: 13px; margin-bottom: 5px;">@username</p>
             <p class="status">Тариф: <span class="highlight-orange" id="profile-tariff">Базовый</span></p>
@@ -196,6 +201,11 @@
                 Купить за 49 ⭐️
             </button>
         </div>
+
+        <!-- КНОПКА ДЛЯ ТЕСТА ТАРИФА -->
+        <button class="btn-secondary full-width mt-20 ripple" id="dev-toggle-btn" onclick="toggleDevPremium()" style="border-color: #8b949e; color: #8b949e;">
+            ⚙️ Переключить тариф (Тест)
+        </button>
     </div>
 
     <!-- ================= НИЖНЯЯ НАВИГАЦИЯ ================= -->
